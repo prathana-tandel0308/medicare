@@ -1,84 +1,65 @@
 const express = require('express');
 const router = express.Router();
 const Appointment = require('../models/Appointment');
-const auth = require('../middleware/auth');
 
-router.get('/', auth, async (req, res) => {
+// FIX: Destructure the import
+const { authMiddleware } = require('../middleware/auth');
+
+// GET all appointments
+router.get('/', authMiddleware, async (req, res) => {
   try {
-    const { date, status, doctor, patient, page = 1, limit = 10 } = req.query;
-    const query = {};
-    if (date) { const d = new Date(date); const next = new Date(d); next.setDate(d.getDate() + 1); query.date = { $gte: d, $lt: next }; }
-    if (status) query.status = status;
-    if (doctor) query.doctor = doctor;
-    if (patient) query.patient = patient;
-
-    const total = await Appointment.countDocuments(query);
-    const appointments = await Appointment.find(query)
-      .populate('patient', 'name patientId phone')
-      .populate('doctor', 'name specialization')
-      .sort({ date: -1 })
-      .skip((page - 1) * limit)
-      .limit(Number(limit));
-
-    res.json({ appointments, total, pages: Math.ceil(total / limit) });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
-
-router.get('/today', auth, async (req, res) => {
-  try {
-    const start = new Date(); start.setHours(0, 0, 0, 0);
-    const end = new Date(); end.setHours(23, 59, 59, 999);
-    const appointments = await Appointment.find({ date: { $gte: start, $lte: end } })
+    const appointments = await Appointment.find()
       .populate('patient', 'name patientId')
-      .populate('doctor', 'name specialization')
-      .sort({ time: 1 });
-    res.json(appointments);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
+      .populate('doctor', 'name doctorId')
+      .sort({ createdAt: -1 });
+    res.status(200).json(appointments);
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to fetch appointments', error: error.message });
   }
 });
 
-router.get('/:id', auth, async (req, res) => {
+// GET single appointment
+router.get('/:id', authMiddleware, async (req, res) => {
   try {
-    const apt = await Appointment.findById(req.params.id).populate('patient').populate('doctor');
-    if (!apt) return res.status(404).json({ message: 'Appointment not found' });
-    res.json(apt);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
-
-router.post('/', auth, async (req, res) => {
-  try {
-    const apt = new Appointment(req.body);
-    await apt.save();
-    const populated = await apt.populate('patient', 'name').populate('doctor', 'name');
-    res.status(201).json(populated);
-  } catch (err) {
-    res.status(400).json({ message: err.message });
-  }
-});
-
-router.put('/:id', auth, async (req, res) => {
-  try {
-    const apt = await Appointment.findByIdAndUpdate(req.params.id, req.body, { new: true })
+    const appointment = await Appointment.findById(req.params.id)
       .populate('patient', 'name patientId')
-      .populate('doctor', 'name specialization');
-    if (!apt) return res.status(404).json({ message: 'Not found' });
-    res.json(apt);
-  } catch (err) {
-    res.status(400).json({ message: err.message });
+      .populate('doctor', 'name doctorId');
+    if (!appointment) return res.status(404).json({ message: 'Appointment not found' });
+    res.status(200).json(appointment);
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to fetch appointment', error: error.message });
   }
 });
 
-router.delete('/:id', auth, async (req, res) => {
+// POST create appointment
+router.post('/', authMiddleware, async (req, res) => {
   try {
-    await Appointment.findByIdAndDelete(req.params.id);
-    res.json({ message: 'Appointment deleted' });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
+    const appointment = await Appointment.create(req.body);
+    res.status(201).json({ message: 'Appointment created successfully', appointment });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to create appointment', error: error.message });
+  }
+});
+
+// PUT update appointment
+router.put('/:id', authMiddleware, async (req, res) => {
+  try {
+    const appointment = await Appointment.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+    if (!appointment) return res.status(404).json({ message: 'Appointment not found' });
+    res.status(200).json({ message: 'Appointment updated successfully', appointment });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to update appointment', error: error.message });
+  }
+});
+
+// DELETE appointment
+router.delete('/:id', authMiddleware, async (req, res) => {
+  try {
+    const appointment = await Appointment.findByIdAndDelete(req.params.id);
+    if (!appointment) return res.status(404).json({ message: 'Appointment not found' });
+    res.status(200).json({ message: 'Appointment deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to delete appointment', error: error.message });
   }
 });
 
