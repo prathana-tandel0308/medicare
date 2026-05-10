@@ -1,80 +1,55 @@
-import React, {
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-} from 'react';
-import axios from 'axios';
+import { createContext, useState, useEffect } from 'react';
+import API from '../api'; // Importing the central API file we just made
 
-const AuthContext = createContext();
+export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Base API URL for local + production
-  const API_BASE =
-    window.location.hostname === 'localhost'
-      ? 'http://localhost:5000/api'
-      : 'https://medicare-3isy.onrender.com/api';
-
+  // Check if user is already logged in when the app loads
   useEffect(() => {
     const token = localStorage.getItem('token');
-    const userData = localStorage.getItem('user');
-
-    // Set axios global base URL
-    axios.defaults.baseURL = API_BASE;
-
-    if (token && userData) {
-      try {
-        setUser(JSON.parse(userData));
-        axios.defaults.headers.common[
-          'Authorization'
-        ] = `Bearer ${token}`;
-      } catch (error) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-      }
+    if (token) {
+      API.get('/api/auth/me')
+        .then((res) => {
+          setUser(res.data.user);
+        })
+        .catch(() => {
+          localStorage.removeItem('token'); // Token is bad, remove it
+          setUser(null);
+        })
+        .finally(() => setLoading(false));
+    } else {
+      setLoading(false);
     }
+  }, []);
 
-    setLoading(false);
-  }, [API_BASE]);
-
-  const login = (token, userData) => {
-    localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(userData));
-
-    axios.defaults.baseURL = API_BASE;
-    axios.defaults.headers.common[
-      'Authorization'
-    ] = `Bearer ${token}`;
-
-    setUser(userData);
+  // Login function
+  const login = async (email, password) => {
+    const res = await API.post('/api/auth/login', { email, password });
+    localStorage.setItem('token', res.data.token);
+    setUser(res.data.user);
+    return res;
   };
 
+  // Register function
+  const register = async (userData) => {
+    const res = await API.post('/api/auth/register', userData);
+    localStorage.setItem('token', res.data.token);
+    setUser(res.data.user);
+    return res;
+  };
+
+  // Logout function
   const logout = () => {
     localStorage.removeItem('token');
-    localStorage.removeItem('user');
-
-    delete axios.defaults.headers.common['Authorization'];
-
     setUser(null);
-
-    window.location.href = '/login';
   };
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        login,
-        logout,
-        loading,
-      }}
-    >
+    <AuthContext.Provider value={{ user, login, register, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );
 };
-
-export const useAuth = () => useContext(AuthContext);
