@@ -1,0 +1,220 @@
+# MediCore HMS — Complete Setup Guide
+# =====================================
+# Read this if you're setting up for the first time!
+
+===============================================================================
+  WHAT YOU NEED TO INSTALL (Prerequisites)
+===============================================================================
+
+Before running the project, you need these 2 things on your PC:
+
+  1. Node.js   → https://nodejs.org  (download LTS version, e.g. v20)
+  2. MongoDB   → https://www.mongodb.com/try/download/community
+               OR use free cloud MongoDB Atlas (no install needed)
+
+How to check if they're already installed (open Command Prompt / Terminal):
+  node --version      → should show v18.x.x or higher
+  mongod --version    → should show some version number
+
+
+===============================================================================
+  OPTION A — WINDOWS USERS (Easiest)
+===============================================================================
+
+1. Install Node.js from https://nodejs.org  (click the LTS button)
+   → Restart your PC after installing Node.js
+
+2. Install MongoDB Community from https://www.mongodb.com/try/download/community
+   → During install: CHECK the box "Install MongoDB as a Service"
+   → This means MongoDB auto-starts with Windows — no manual starting needed
+
+3. Extract this zip file to a folder, e.g.:
+   C:\Projects\hospital-ms\
+
+4. Double-click SETUP_WINDOWS.bat
+   → It will install all packages automatically
+   → Say "y" when asked about sample data
+
+5. Double-click START_WINDOWS.bat every time you want to run the project
+
+6. Open your browser → http://localhost:3000
+   Login: admin@medicore.com / admin123
+
+
+===============================================================================
+  OPTION B — MAC USERS
+===============================================================================
+
+1. Install Node.js:
+   brew install node
+   OR download from https://nodejs.org
+
+2. Install MongoDB:
+   brew tap mongodb/brew
+   brew install mongodb-community
+   brew services start mongodb-community   ← starts MongoDB in background
+
+3. Extract zip, open Terminal in that folder:
+   cd path/to/hospital-ms
+
+4. Run setup:
+   chmod +x setup.sh start.sh
+   bash setup.sh
+
+5. To start the project:
+   bash start.sh
+
+6. Open http://localhost:3000
+
+
+===============================================================================
+  OPTION C — LINUX (Ubuntu/Debian)
+===============================================================================
+
+1. Install Node.js:
+   curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+   sudo apt-get install -y nodejs
+
+2. Install MongoDB:
+   Follow: https://www.mongodb.com/docs/manual/tutorial/install-mongodb-on-ubuntu/
+   Then: sudo systemctl start mongod
+         sudo systemctl enable mongod   ← auto-start on boot
+
+3. Run setup:
+   chmod +x setup.sh start.sh
+   bash setup.sh
+
+4. Start:
+   bash start.sh
+
+
+===============================================================================
+  OPTION D — MONGODB ATLAS (No local MongoDB install)
+===============================================================================
+
+Use this if you don't want to install MongoDB on your PC.
+
+1. Go to https://www.mongodb.com/cloud/atlas
+2. Sign up for free → Create a free cluster (M0 Sandbox, 512MB free)
+3. In Atlas dashboard:
+   - Click "Connect" → "Connect your application"
+   - Copy the connection string, looks like:
+     mongodb+srv://youruser:yourpassword@cluster0.abc123.mongodb.net/
+
+4. Edit the file:  backend/.env
+   Change this line:
+     MONGODB_URI=mongodb://localhost:27017/hospital_ms
+   To:
+     MONGODB_URI=mongodb+srv://youruser:yourpassword@cluster0.abc123.mongodb.net/hospital_ms
+
+5. In Atlas → Network Access → Add IP Address → "Allow Access from Anywhere"
+
+6. Now run setup normally (SETUP_WINDOWS.bat or bash setup.sh)
+
+
+===============================================================================
+  WHAT EACH FILE DOES
+===============================================================================
+
+  SETUP_WINDOWS.bat  → Run ONCE to install everything (Windows)
+  START_WINDOWS.bat  → Run every time to start the app (Windows)
+  setup.sh           → Run ONCE to install everything (Mac/Linux)
+  start.sh           → Run every time to start the app (Mac/Linux)
+  backend/.env       → Your configuration file (MongoDB URL, secret key)
+  backend/seed.js    → Adds sample data (run once, optional)
+
+
+===============================================================================
+  MANUAL START (without the scripts)
+===============================================================================
+
+Open TWO terminal windows:
+
+  Terminal 1 (Backend):
+    cd backend
+    npm run dev
+    → You should see: "MongoDB Connected" and "Server running on port 5000"
+
+  Terminal 2 (Frontend):
+    cd frontend
+    npm start
+    → Browser should open automatically at http://localhost:3000
+
+
+===============================================================================
+  CHANGING THE SECRET KEY (Important for real use!)
+===============================================================================
+
+Open backend/.env and change JWT_SECRET to any long random string:
+
+  JWT_SECRET=my_hospital_name_some_random_text_abc123xyz789
+
+This key signs authentication tokens. Change it before deploying!
+
+
+===============================================================================
+  COMMON ERRORS & FIXES
+===============================================================================
+
+ERROR: "MongoDB Connection Failed"
+  FIX:  - Windows: Open Services → find "MongoDB" → click Start
+          OR open Command Prompt as Admin → net start MongoDB
+  FIX:  - Mac: brew services start mongodb-community
+  FIX:  - Or switch to Atlas (see Option D above)
+
+ERROR: "Port 5000 already in use"
+  FIX:  Open backend/.env → change PORT=5000 to PORT=5001
+
+ERROR: "Port 3000 already in use"
+  FIX:  The React script will ask "Use port 3001?" → press Y
+
+ERROR: "npm is not recognized"
+  FIX:  Node.js not installed or not in PATH. Reinstall from nodejs.org
+        and restart terminal/PC
+
+ERROR: "Cannot find module ..."
+  FIX:  Run npm install again in both backend/ and frontend/ folders
+
+ERROR: Blank white screen on login
+  FIX:  Backend not running. Check Terminal 1 has "Server running on port 5000"
+
+
+===============================================================================
+  DEFAULT PORTS
+===============================================================================
+
+  Frontend (React):   http://localhost:3000
+  Backend (API):      http://localhost:5000
+  MongoDB:            localhost:27017
+
+
+===============================================================================
+  DEFAULT LOGIN
+===============================================================================
+
+  Email:    admin@medicore.com
+  Password: admin123
+
+  (Only works if you ran the seed script during setup)
+  To re-seed at any time:  cd backend && node seed.js
+
+
+===============================================================================
+  FOLDER STRUCTURE EXPLAINED
+===============================================================================
+
+  hospital-ms/
+  ├── backend/              ← Node.js + Express server
+  │   ├── models/           ← Database schemas (Patient, Doctor, etc.)
+  │   ├── routes/           ← API endpoints
+  │   ├── middleware/       ← JWT authentication check
+  │   ├── .env              ← YOUR CONFIG FILE (MongoDB URL, secret)
+  │   ├── server.js         ← Main server file
+  │   └── seed.js           ← Sample data loader
+  │
+  └── frontend/             ← React app
+      └── src/
+          ├── pages/        ← Dashboard, Patients, Doctors, Appointments
+          ├── components/   ← Sidebar, Layout
+          ├── context/      ← Login state management
+          └── utils/        ← API helper (axios)
