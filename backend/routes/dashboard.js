@@ -3,49 +3,29 @@ const router = express.Router();
 const Patient = require('../models/Patient');
 const Doctor = require('../models/Doctor');
 const Appointment = require('../models/Appointment');
-const auth = require('../middleware/auth');
 
-router.get('/stats', auth, async (req, res) => {
+// FIX: Destructure the import
+const { authMiddleware } = require('../middleware/auth');
+
+// GET dashboard stats
+router.get('/', authMiddleware, async (req, res) => {
   try {
-    const [totalPatients, totalDoctors, totalAppointments, activePatients] = await Promise.all([
-      Patient.countDocuments(),
-      Doctor.countDocuments({ status: 'Active' }),
-      Appointment.countDocuments(),
-      Patient.countDocuments({ status: 'Active' })
-    ]);
+    const totalPatients = await Patient.countDocuments();
+    const totalDoctors = await Doctor.countDocuments();
+    const totalAppointments = await Appointment.countDocuments();
+    
+    const activePatients = await Patient.countDocuments({ status: 'Active' });
+    const criticalPatients = await Patient.countDocuments({ status: 'Critical' });
 
-    const today = new Date(); today.setHours(0, 0, 0, 0);
-    const todayEnd = new Date(); todayEnd.setHours(23, 59, 59, 999);
-    const todayAppointments = await Appointment.countDocuments({ date: { $gte: today, $lte: todayEnd } });
-
-    const recentPatients = await Patient.find().sort({ createdAt: -1 }).limit(5).select('name patientId status admittedDate bloodGroup');
-    const recentAppointments = await Appointment.find()
-      .sort({ createdAt: -1 }).limit(5)
-      .populate('patient', 'name')
-      .populate('doctor', 'name specialization');
-
-    // Monthly appointment stats for chart (last 6 months)
-    const sixMonthsAgo = new Date();
-    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-    const monthlyStats = await Appointment.aggregate([
-      { $match: { date: { $gte: sixMonthsAgo } } },
-      { $group: { _id: { month: { $month: '$date' }, year: { $year: '$date' } }, count: { $sum: 1 } } },
-      { $sort: { '_id.year': 1, '_id.month': 1 } }
-    ]);
-
-    const statusDist = await Patient.aggregate([
-      { $group: { _id: '$status', count: { $sum: 1 } } }
-    ]);
-
-    res.json({
-      stats: { totalPatients, totalDoctors, totalAppointments, activePatients, todayAppointments },
-      recentPatients,
-      recentAppointments,
-      monthlyStats,
-      statusDist
+    res.status(200).json({
+      totalPatients,
+      totalDoctors,
+      totalAppointments,
+      activePatients,
+      criticalPatients
     });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to fetch dashboard data', error: error.message });
   }
 });
 
