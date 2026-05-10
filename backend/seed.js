@@ -1,4 +1,4 @@
-require('dotenv').config(); // IMPORTANT: Added so it uses the same DB as server.js
+require('dotenv').config();
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
