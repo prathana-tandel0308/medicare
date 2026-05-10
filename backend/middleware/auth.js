@@ -1,12 +1,12 @@
 const jwt = require('jsonwebtoken');
-const User = require('../models/user');
+const User = require('../models/User');
 
-// Protect routes / verify token
+// Protect routes / verify JWT token
 const authMiddleware = async (req, res, next) => {
   try {
     let token;
 
-    // Check Authorization header
+    // Check for Bearer token in headers
     if (
       req.headers.authorization &&
       req.headers.authorization.startsWith('Bearer ')
@@ -14,7 +14,7 @@ const authMiddleware = async (req, res, next) => {
       token = req.headers.authorization.split(' ')[1];
     }
 
-    // No token
+    // No token found
     if (!token) {
       return res.status(401).json({
         message: 'Not authorized, no token provided',
@@ -27,7 +27,7 @@ const authMiddleware = async (req, res, next) => {
       process.env.JWT_SECRET
     );
 
-    // Find user from token
+    // Find user from token payload
     const user = await User.findById(decoded.id).select(
       '-password'
     );
@@ -38,7 +38,7 @@ const authMiddleware = async (req, res, next) => {
       });
     }
 
-    // Attach user to request
+    // Attach user to request object
     req.user = user;
 
     next();
@@ -46,12 +46,12 @@ const authMiddleware = async (req, res, next) => {
     console.error('Auth Middleware Error:', error);
 
     return res.status(401).json({
-      message: 'Not authorized, token failed',
+      message: 'Not authorized, token invalid',
     });
   }
 };
 
-// Role-based authorization
+// Optional role-based access control
 const authorizeRoles = (...roles) => {
   return (req, res, next) => {
     if (!req.user) {
