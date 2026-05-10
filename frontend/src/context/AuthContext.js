@@ -1,5 +1,4 @@
 import { createContext, useState, useEffect } from 'react';
-import API from '../api'; // Importing the central API file we just made
 
 export const AuthContext = createContext();
 
@@ -7,17 +6,26 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // Get the backend URL from environment variables
+  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
   // Check if user is already logged in when the app loads
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
-      API.get('/api/auth/me')
-        .then((res) => {
-          setUser(res.data.user);
+      fetch(`${API_URL}/api/auth/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.user) {
+            setUser(data.user);
+          } else {
+            localStorage.removeItem('token');
+          }
         })
         .catch(() => {
-          localStorage.removeItem('token'); // Token is bad, remove it
-          setUser(null);
+          localStorage.removeItem('token');
         })
         .finally(() => setLoading(false));
     } else {
@@ -27,18 +35,19 @@ export const AuthProvider = ({ children }) => {
 
   // Login function
   const login = async (email, password) => {
-    const res = await API.post('/api/auth/login', { email, password });
-    localStorage.setItem('token', res.data.token);
-    setUser(res.data.user);
-    return res;
-  };
-
-  // Register function
-  const register = async (userData) => {
-    const res = await API.post('/api/auth/register', userData);
-    localStorage.setItem('token', res.data.token);
-    setUser(res.data.user);
-    return res;
+    const res = await fetch(`${API_URL}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      localStorage.setItem('token', data.token);
+      setUser(data.user);
+      return data;
+    } else {
+      throw new Error(data.message || 'Login failed');
+    }
   };
 
   // Logout function
@@ -48,7 +57,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, loading }}>
+    <AuthContext.Provider value={{ user, login, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );
