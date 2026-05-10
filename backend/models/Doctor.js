@@ -20,7 +20,7 @@ const doctorSchema = new mongoose.Schema({
 });
 
 doctorSchema.pre('save', async function (next) {
-  if (!this.doctorId) {
+  if (!this.appointmentId) {
     const count = await mongoose.model('Doctor').countDocuments();
     this.doctorId = `DOC${String(count + 1).padStart(4, '0')}`;
   }
