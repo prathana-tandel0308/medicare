@@ -1,60 +1,60 @@
 const express = require('express');
 const router = express.Router();
 const Doctor = require('../models/Doctor');
-const auth = require('../middleware/auth');
 
-router.get('/', auth, async (req, res) => {
+// FIX: Destructure the import
+const { authMiddleware } = require('../middleware/auth');
+
+// GET all doctors
+router.get('/', authMiddleware, async (req, res) => {
   try {
-    const { search, department, status, page = 1, limit = 10 } = req.query;
-    const query = {};
-    if (search) query.$or = [{ name: new RegExp(search, 'i') }, { specialization: new RegExp(search, 'i') }];
-    if (department) query.department = department;
-    if (status) query.status = status;
-
-    const total = await Doctor.countDocuments(query);
-    const doctors = await Doctor.find(query).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(Number(limit));
-    res.json({ doctors, total, pages: Math.ceil(total / limit) });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
+    const doctors = await Doctor.find().sort({ createdAt: -1 });
+    res.status(200).json(doctors);
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to fetch doctors', error: error.message });
   }
 });
 
-router.get('/:id', auth, async (req, res) => {
+// GET single doctor
+router.get('/:id', authMiddleware, async (req, res) => {
   try {
     const doctor = await Doctor.findById(req.params.id);
     if (!doctor) return res.status(404).json({ message: 'Doctor not found' });
-    res.json(doctor);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(200).json(doctor);
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to fetch doctor', error: error.message });
   }
 });
 
-router.post('/', auth, async (req, res) => {
+// POST create doctor
+router.post('/', authMiddleware, async (req, res) => {
   try {
-    const doctor = new Doctor(req.body);
-    await doctor.save();
-    res.status(201).json(doctor);
-  } catch (err) {
-    res.status(400).json({ message: err.message });
+    const doctor = await Doctor.create(req.body);
+    res.status(201).json({ message: 'Doctor created successfully', doctor });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to create doctor', error: error.message });
   }
 });
 
-router.put('/:id', auth, async (req, res) => {
+// PUT update doctor
+router.put('/:id', authMiddleware, async (req, res) => {
   try {
     const doctor = await Doctor.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
     if (!doctor) return res.status(404).json({ message: 'Doctor not found' });
-    res.json(doctor);
-  } catch (err) {
-    res.status(400).json({ message: err.message });
+    res.status(200).json({ message: 'Doctor updated successfully', doctor });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to update doctor', error: error.message });
   }
 });
 
-router.delete('/:id', auth, async (req, res) => {
+// DELETE doctor
+router.delete('/:id', authMiddleware, async (req, res) => {
   try {
-    await Doctor.findByIdAndDelete(req.params.id);
-    res.json({ message: 'Doctor deleted' });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
+    const doctor = await Doctor.findByIdAndDelete(req.params.id);
+    if (!doctor) return res.status(404).json({ message: 'Doctor not found' });
+    res.status(200).json({ message: 'Doctor deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to delete doctor', error: error.message });
   }
 });
 
