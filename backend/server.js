@@ -41,6 +41,37 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// =========================================================
+// ⚠️ ONE-TIME FIX ROUTE - ADD THIS HERE
+// This forces the admin user into the database Render is using
+// =========================================================
+app.post('/api/fix-seed-admin', async (req, res) => {
+  try {
+    const User = require('./models/User');
+    
+    // Delete any existing broken admin
+    await User.deleteOne({ email: 'admin@medicore.com' });
+    
+    // Create a fresh admin with plain password 
+    // (The User model will automatically hash it via bcrypt)
+    const user = await User.create({
+      name: 'Admin User',
+      email: 'admin@medicore.com',
+      password: 'admin123', 
+      role: 'admin',
+    });
+
+    res.json({ 
+      message: '✅ Admin user force-created in this database!', 
+      userId: user._id,
+      email: user.email 
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Fix failed', error: error.message });
+  }
+});
+// =========================================================
+
 // Error handler
 app.use((err, req, res, next) => {
   console.error(err.stack);
